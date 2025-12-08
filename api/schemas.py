@@ -1,70 +1,72 @@
 """schemas for pydantic models"""
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, EmailStr
 
-class UserCreate(BaseModel):
-    """user create schema"""
+class UserBase(BaseModel):
+    """user base schema"""
     email: EmailStr
-    password: str
     first_name: str
     last_name: str
-    patronymic: str | None = None
+    patronymic: Optional[str] = None
+
+
+class UserCreate(UserBase):
+    """user create schema"""
+    password: str   
 
 
 class UserUpdate(BaseModel):
     """user update schema"""
-    first_name: str | None = None
-    last_name: str | None = None
-    patronymic: str | None = None
-
-
-class UserRead(BaseModel):
-    """user read schema"""
-    id: int
-    email: EmailStr
     first_name: str
     last_name: str
-    patronymic: str | None
-    created_at: datetime
-
-    class Config:
-        """config for pydantic"""
-        from_attributes = True
+    patronymic: Optional[str] = None
 
 
-
-class CourseCreate(BaseModel):
-    """course create schema"""
-    title: str
-    description: str | None
-
-class CourseRead(BaseModel):
-    """course read schema"""
+class UserResponse(UserBase):
+    """user response schema"""
     id: int
-    title: str
-    description: str
     created_at: datetime
-    
+
     class Config:
         """config for pydantic"""
         from_attributes = True
+
+class CourseBase(BaseModel):
+    """course base schema"""
+    title: str
+    description: Optional[str] = None
+
+
+class CourseCreate(CourseBase):
+    """course create schema"""
+    pass
+
 
 class CourseUpdate(BaseModel):
     """course update schema"""
-    title: str | None = None
-    description: str | None = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+
+
+class CourseResponse(CourseBase):
+    """course response schema"""
+    id: int
+
+    class Config:
+        """config for pydantic"""
+        from_attributes = True
 
 class EnrollmentCreate(BaseModel):
     """enrollment create schema"""
     user_id: int
     course_id: int
 
-class EnrollmentRead(BaseModel):
-    """enrollment read schema"""
+class EnrollmentResponse(BaseModel):
+    """enrollment response schema"""
     id: int
     user_id: int
     course_id: int
-    created_at: datetime
 
     class Config:
         """config for pydantic"""
