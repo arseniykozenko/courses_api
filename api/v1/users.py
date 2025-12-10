@@ -6,7 +6,7 @@ from utils.database import get_db
 from services.users import UserService
 
 
-router = APIRouter(prefix="api/v1/users", tags=["Users"])
+router = APIRouter(prefix="/api/v1/users", tags=["Users"])
 
 get_db()
 

@@ -1,11 +1,11 @@
 """schemas for pydantic models"""
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 class UserBase(BaseModel):
     """user base schema"""
-    email: EmailStr
+    email: str
     first_name: str
     last_name: str
     patronymic: Optional[str] = None
@@ -51,6 +51,7 @@ class CourseUpdate(BaseModel):
 class CourseResponse(CourseBase):
     """course response schema"""
     id: int
+    created_at: datetime
 
     class Config:
         """config for pydantic"""
@@ -66,6 +67,7 @@ class EnrollmentResponse(BaseModel):
     id: int
     user_id: int
     course_id: int
+    created_at: datetime
 
     class Config:
         """config for pydantic"""

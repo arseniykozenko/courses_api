@@ -7,7 +7,7 @@ from services.enrollments import EnrollmentService
 from services.courses import CourseService
 from services.users import UserService
 
-router = APIRouter(prefix="api/v1/enrollments", tags=["Enrollments"])
+router = APIRouter(prefix="/api/v1/enrollments", tags=["Enrollments"])
 
 get_db()
 
@@ -32,7 +32,7 @@ async def get_enrollment(enrollment_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось получить запись на курс: {e}")
 
-@router.get("/{user_id}", response_model=list[EnrollmentResponse])
+@router.get("/by-user/{user_id}", response_model=list[EnrollmentResponse])
 async def get_enrollments_by_user(user_id: int, db: Session = Depends(get_db)):
     """get enrollments by user id"""
     enrollment_service = EnrollmentService(db)
@@ -44,7 +44,7 @@ async def get_enrollments_by_user(user_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось получить записи на курсы: {e}")
 
-@router.get("/{course_id}", response_model=list[EnrollmentResponse])
+@router.get("/by-course/{course_id}", response_model=list[EnrollmentResponse])
 async def get_enrollments_by_course(course_id: int, db: Session = Depends(get_db)):
     """get enrollments by course id"""
     enrollment_service = EnrollmentService(db)

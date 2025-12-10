@@ -5,7 +5,7 @@ from utils.database import get_db
 from api.schemas import CourseResponse, CourseCreate, CourseUpdate
 from services.courses import CourseService
 
-router = APIRouter(prefix="api/v1/courses", tags=["Courses"])
+router = APIRouter(prefix="/api/v1/courses", tags=["Courses"])
 
 get_db()
 
