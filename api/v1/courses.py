@@ -43,7 +43,7 @@ async def create_course(course: CourseCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Не удалось создать курс: {e}")
 
 @router.put("/{course_id}", response_model=CourseResponse)
-def update_course(course_id: int, course: CourseUpdate, db: Session = Depends(get_db)):
+async def update_course(course_id: int, course: CourseUpdate, db: Session = Depends(get_db)):
     """update course"""
     course_service = CourseService(db)
     db_course = course_service.get_course_by_id(course_id)

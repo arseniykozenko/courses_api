@@ -13,8 +13,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """user create schema"""
-    password: str   
-
+    password: str
 
 class UserUpdate(BaseModel):
     """user update schema"""

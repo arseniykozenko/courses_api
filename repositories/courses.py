@@ -26,7 +26,7 @@ class CourseRepository:
             self.db.commit()
             self.db.refresh(course)
             return course
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-except
             self.db.rollback()
             print(f"Failed to create course: {e}")
             return None
@@ -37,7 +37,7 @@ class CourseRepository:
             self.db.commit()
             self.db.refresh(course)
             return course
-        except Exception:
+        except Exception: # pylint: disable=broad-except
             self.db.rollback()
             return None
 
@@ -47,6 +47,6 @@ class CourseRepository:
             self.db.delete(course)
             self.db.commit()
             return course
-        except Exception:
+        except Exception: # pylint: disable=broad-except
             self.db.rollback()
             return False
