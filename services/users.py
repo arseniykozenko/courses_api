@@ -1,5 +1,4 @@
 """users service"""
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from repositories.users import UserRepository
 from api.schemas import UserCreate, UserUpdate
@@ -26,9 +25,6 @@ class UserService:
 
     def create_user(self, user: UserCreate):
         """create user"""
-        db_email = self.user_repository.get_by_email(user.email)
-        if db_email:
-            raise HTTPException(status_code=400, detail="Почта уже существует")
         hashed_password = hash_password(user.password)
         new_user = User(
             email=user.email,
@@ -43,16 +39,15 @@ class UserService:
     def update_user(self, user_id: int, user: UserUpdate):
         """update user"""
         db_user = self.user_repository.get_by_id(user_id)
-        if not db_user:
-            raise HTTPException(status_code=404, detail="Пользователь не найден")
-        db_user.first_name = user.first_name
-        db_user.last_name = user.last_name
-        db_user.patronymic = user.patronymic
+        if user.first_name is not None:
+            db_user.first_name = user.first_name
+        if user.last_name is not None:
+            db_user.last_name = user.last_name
+        if user.patronymic is not None:
+            db_user.patronymic = user.patronymic
         return self.user_repository.update_user(db_user)
 
     def delete_user(self, user_id: int):
         """delete user"""
         db_user = self.user_repository.get_by_id(user_id)
-        if not db_user:
-            raise HTTPException(status_code=404, detail="Пользователь не найден")
         return self.user_repository.delete_user(db_user)

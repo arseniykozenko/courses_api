@@ -11,7 +11,7 @@ router = APIRouter(prefix="api/v1/auth", tags=["Auth"])
 get_db()
 
 @router.post("/register", response_model=UserResponse)
-def register(user: UserCreate, db: Session = Depends(get_db)):
+async def register(user: UserCreate, db: Session = Depends(get_db)):
     """register user"""
     service = UserService(db)
     db_email = service.get_user_by_email(user.email)

@@ -1,4 +1,4 @@
-"""user repository"""
+"""users repository"""
 from sqlalchemy.orm import Session
 from utils import models
 
@@ -47,6 +47,7 @@ class UserRepository:
         try:
             self.db.delete(user)
             self.db.commit()
+            return user
         except Exception as e:
             self.db.rollback()
             print(f"Failed to delete user: {e}")

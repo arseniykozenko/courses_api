@@ -3,11 +3,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from utils.database import Base, engine
 from api.v1.auth import router as auth_router
+from api.v1.users import router as users_router
 
 app = FastAPI(title="Courses API")
 Base.metadata.create_all(bind=engine)
 
 app.include_router(auth_router)
+app.include_router(users_router)
 
 app.add_middleware(
     CORSMiddleware,

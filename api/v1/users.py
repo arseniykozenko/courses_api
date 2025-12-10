@@ -11,7 +11,7 @@ router = APIRouter(prefix="api/v1/users", tags=["Users"])
 get_db()
 
 @router.get("/", response_model=list[UserResponse])
-def get_users(db: Session = Depends(get_db)):
+async def get_users(db: Session = Depends(get_db)):
     """get all users"""
     service = UserService(db)
     try:
@@ -20,7 +20,7 @@ def get_users(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Не удалось получить пользователей: {e}")
 
 @router.get("/{user_id}", response_model=UserResponse)
-def get_user(user_id: int, db: Session = Depends(get_db)):
+async def get_user(user_id: int, db: Session = Depends(get_db)):
     """get user by id"""
     service = UserService(db)
     user = service.get_user_by_id(user_id)
@@ -32,7 +32,7 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Не удалось получить пользователя: {e}")
 
 @router.post("/", response_model=UserResponse)
-def create_user(user: UserCreate, db: Session = Depends(get_db)):
+async def create_user(user: UserCreate, db: Session = Depends(get_db)):
     """create user"""
     service = UserService(db)
     db_email = service.get_user_by_email(user.email)
@@ -46,28 +46,28 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{user_id}", response_model=UserResponse)
-def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db)):
+async def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db)):
     """update user"""
     service = UserService(db)
-    user = service.get_user_by_id(user_id)
-    if not user:
+    db_user = service.get_user_by_id(user_id)
+    if not db_user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     try:
-        updated_user = service.update_user(user_id, user)
-        return updated_user
+        db_user = service.update_user(user_id, user)
+        return db_user
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось обновить пользователя: {e}")
 
 
 @router.delete("/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db)):
+async def delete_user(user_id: int, db: Session = Depends(get_db)):
     """delete user"""
     service = UserService(db)
-    user = service.get_user_by_id(user_id)
-    if not user:
+    db_user = service.get_user_by_id(user_id)
+    if not db_user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     try:
-        service.delete_user(user_id)
-        return {"message": "Пользователь успешно удален"}
+        service.delete_user(db_user.id)
+        return db_user
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось удалить пользователя: {e}")
