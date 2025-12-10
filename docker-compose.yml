@@ -1,0 +1,47 @@
+services:
+  course_system_app:
+    build: .
+    container_name: course_system_app
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - course_system_db
+      - redis
+    networks:
+      - course_system_network
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+  course_system_db:
+    image: postgres:15
+    container_name: course_system_db
+    restart: always
+    networks:
+      - course_system_network
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: courses_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  redis:
+    image: redis:7.0
+    container_name: redis
+    networks:
+      - course_system_network
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+networks:
+  course_system_network:
+    driver: bridge
+volumes:
+  postgres_data:
+  redis_data:

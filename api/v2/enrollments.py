@@ -2,12 +2,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from utils.database import get_db
-from api.v1.schemas import EnrollmentResponse, EnrollmentCreate
+from utils.jwt import get_current_user
+from api.v2.schemas import EnrollmentResponse, EnrollmentCreate
 from services.enrollments import EnrollmentService
 from services.courses import CourseService
 from services.users import UserService
 
-router = APIRouter(prefix="/api/v1/enrollments", tags=["Enrollments v1"])
+router = APIRouter(prefix="/api/v2/enrollments", tags=["Enrollments v2"], dependencies=[Depends(get_current_user)])
 
 get_db()
 

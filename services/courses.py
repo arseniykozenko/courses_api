@@ -1,7 +1,7 @@
 """courses service"""
 from repositories.courses import CourseRepository
 from utils.models import Course
-from api.schemas import CourseCreate, CourseUpdate
+from api.v1.schemas import CourseCreate, CourseUpdate
 
 class CourseService:
     """course service class"""

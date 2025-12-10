@@ -2,18 +2,26 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from utils.database import Base, engine
-from api.v1.auth import router as auth_router
-from api.v1.users import router as users_router
-from api.v1.courses import router as courses_router
-from api.v1.enrollments import router as enrollments_router
+from api.v1.auth import router as v1_auth_router
+from api.v1.users import router as v1_users_router
+from api.v1.courses import router as v1_courses_router
+from api.v1.enrollments import router as v1_enrollments_router
+from api.v2.auth import router as v2_auth_router
+from api.v2.users import router as v2_users_router
+from api.v2.courses import router as v2_courses_router
+from api.v2.enrollments import router as v2_enrollments_router
 
 app = FastAPI(title="Courses API")
 Base.metadata.create_all(bind=engine)
 
-app.include_router(auth_router)
-app.include_router(users_router)
-app.include_router(courses_router)
-app.include_router(enrollments_router)
+app.include_router(v1_auth_router)
+app.include_router(v1_users_router)
+app.include_router(v1_courses_router)
+app.include_router(v1_enrollments_router)
+app.include_router(v2_auth_router)
+app.include_router(v2_users_router)
+app.include_router(v2_courses_router)
+app.include_router(v2_enrollments_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,7 +36,8 @@ async def root():
     return {
         "message": "Courses API",
         "versions": {
-            "v1": "/api/v1"
+            "v1": "/api/v1",
+            "v2": "/api/v2",
         },
         "docs": "/docs"
     }

@@ -1,7 +1,8 @@
 """users service"""
 from sqlalchemy.orm import Session
 from repositories.users import UserRepository
-from api.schemas import UserCreate, UserUpdate
+from api.v1.schemas import UserCreate, UserUpdate
+from api.v2.schemas import UserLogin
 from utils.models import User
 from utils.hashing import hash_password
 
@@ -51,3 +52,8 @@ class UserService:
         """delete user"""
         db_user = self.user_repository.get_by_id(user_id)
         return self.user_repository.delete_user(db_user)
+    
+    def authenticate_user(self, user: UserLogin):
+        """authenticate user"""
+        db_user = self.user_repository.get_by_email(user.email)
+        return db_user

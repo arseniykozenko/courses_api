@@ -1,12 +1,12 @@
 """Users Router for v1 api"""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from api.v1.schemas import UserCreate, UserUpdate, UserResponse
+from api.v2.schemas import UserCreate, UserUpdate, UserResponse
 from utils.database import get_db
+from utils.jwt import get_current_user
 from services.users import UserService
 
-
-router = APIRouter(prefix="/api/v1/users", tags=["Users v1"])
+router = APIRouter(prefix="/api/v2/users", tags=["Users v2"], dependencies=[Depends(get_current_user)])
 
 get_db()
 

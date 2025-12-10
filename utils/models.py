@@ -15,6 +15,7 @@ class User(Base):
     last_name = Column(String)
     patronymic = Column(String)
     created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     enrollments = relationship("Enrollment", back_populates="user")
 
@@ -27,6 +28,7 @@ class Course(Base):
     title = Column(String, nullable=False)
     description = Column(String)
     created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     enrollments = relationship("Enrollment", back_populates="course")
 
@@ -39,6 +41,7 @@ class Enrollment(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     course_id = Column(Integer, ForeignKey("courses.id"))
     created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     user = relationship("User", back_populates="enrollments")
     course = relationship("Course", back_populates="enrollments")

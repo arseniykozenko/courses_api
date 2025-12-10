@@ -1,7 +1,7 @@
 """Enrollment service"""
 from repositories.enrollments import EnrollmentRepository
 from utils.models import Enrollment
-from api.schemas import EnrollmentCreate
+from api.v1.schemas import EnrollmentCreate
 
 class EnrollmentService:
     """Enrollment service class"""

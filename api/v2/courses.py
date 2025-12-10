@@ -2,10 +2,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from utils.database import get_db
-from api.v1.schemas import CourseResponse, CourseCreate, CourseUpdate
+from utils.jwt import get_current_user
+from api.v2.schemas import CourseResponse, CourseCreate, CourseUpdate
 from services.courses import CourseService
 
-router = APIRouter(prefix="/api/v1/courses", tags=["Courses v1"])
+
+router = APIRouter(prefix="/api/v2/courses", tags=["Courses v2"], dependencies=[Depends(get_current_user)])
 
 get_db()
 

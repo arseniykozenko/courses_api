@@ -1,12 +1,12 @@
 """Auth Router for v1 api"""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from api.schemas import UserCreate, UserResponse
+from api.v1.schemas import UserCreate, UserResponse
 from utils.database import get_db
 from services.users import UserService
 
 
-router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
+router = APIRouter(prefix="/api/v1/auth", tags=["Auth v1"])
 
 get_db()
 
