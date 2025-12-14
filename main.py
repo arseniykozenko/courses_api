@@ -2,6 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from utils.database import Base, engine
+from api.internal.internal import router as internal_router
 from api.v1.auth import router as v1_auth_router
 from api.v1.users import router as v1_users_router
 from api.v1.courses import router as v1_courses_router
@@ -15,6 +16,7 @@ from middlewares.rate_limit_headers import rate_limit_headers
 app = FastAPI(title="Courses API")
 Base.metadata.create_all(bind=engine)
 
+app.include_router(internal_router)
 app.include_router(v1_auth_router)
 app.include_router(v1_users_router)
 app.include_router(v1_courses_router)
@@ -38,6 +40,7 @@ async def root():
     return {
         "message": "Courses API",
         "versions": {
+            "internal": "/internal",
             "v1": "/api/v1",
             "v2": "/api/v2",
         },

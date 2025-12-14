@@ -14,6 +14,10 @@ class CourseRepository:
     def get_by_title(self, title: str):
         """get course by title"""
         return self.db.query(models.Course).filter(models.Course.title == title).first()
+    
+    def get_all_raw(self):
+        """get all courses raw"""
+        return self.db.query(models.Course).all()
 
     def get_all(self, offset: int, limit: int):
         """get all courses"""

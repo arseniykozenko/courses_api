@@ -8,6 +8,10 @@ class CourseService:
     def __init__(self, db):
         self.course_repository = CourseRepository(db)
     
+    def get_all_courses_internal(self):
+        """get all courses without pagination, for internal use only"""
+        return self.course_repository.get_all_raw()
+
     def get_all_courses(self, page: int, size: int, fields: list[str] | None = None):
         """get all courses"""
         offset = (page - 1) * size
