@@ -3,12 +3,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from utils.database import get_db
 from utils.jwt import get_current_user
+from utils.rate_limit import rate_limit
+from utils.idempotency import idempotency_guard
+from utils.redis import redis_client
 from api.v2.schemas import EnrollmentResponse, EnrollmentCreate
 from services.enrollments import EnrollmentService
 from services.courses import CourseService
 from services.users import UserService
 
-router = APIRouter(prefix="/api/v2/enrollments", tags=["Enrollments v2"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/api/v2/enrollments", tags=["Enrollments v2"], dependencies=[Depends(get_current_user), Depends(rate_limit)])
 
 get_db()
 
@@ -58,7 +61,11 @@ async def get_enrollments_by_course(course_id: int, db: Session = Depends(get_db
         raise HTTPException(status_code=500, detail=f"Не удалось получить записи на курсы: {e}")
 
 @router.post("/", response_model=EnrollmentResponse)
-async def create_enrollment(enrollment: EnrollmentCreate, db: Session = Depends(get_db)):
+async def create_enrollment(
+    enrollment: EnrollmentCreate, 
+    db: Session = Depends(get_db), 
+    idempotency_key: str = Depends(idempotency_guard)
+    ):
     """create enrollment"""
     enrollment_service = EnrollmentService(db)
     course_service = CourseService(db)
@@ -71,6 +78,10 @@ async def create_enrollment(enrollment: EnrollmentCreate, db: Session = Depends(
         raise HTTPException(status_code=404, detail=f"Пользователь c id {enrollment.user_id} не найден")
     try:
         new_enrollment = enrollment_service.create_enrollment(enrollment)
+        enrollment_response = EnrollmentResponse.model_validate(new_enrollment)
+        if idempotency_key:
+            key = f"idempotency:{idempotency_key}"
+            redis_client.setex(key, 300, enrollment_response.model_dump_json())
         return new_enrollment
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось создать запись на курс: {e}")

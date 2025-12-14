@@ -5,10 +5,11 @@ from api.v2.schemas import UserCreate, UserResponse, UserLoginResponse, UserLogi
 from utils.database import get_db
 from utils.hashing import verify_password
 from utils.jwt import create_access_token
+from utils.rate_limit import rate_limit
 from services.users import UserService
 
 
-router = APIRouter(prefix="/api/v2/auth", tags=["Auth v2"])
+router = APIRouter(prefix="/api/v2/auth", tags=["Auth v2"], dependencies=[Depends(rate_limit)])
 
 get_db()
 

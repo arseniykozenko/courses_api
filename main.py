@@ -10,6 +10,7 @@ from api.v2.auth import router as v2_auth_router
 from api.v2.users import router as v2_users_router
 from api.v2.courses import router as v2_courses_router
 from api.v2.enrollments import router as v2_enrollments_router
+from middlewares.rate_limit_headers import rate_limit_headers
 
 app = FastAPI(title="Courses API")
 Base.metadata.create_all(bind=engine)
@@ -30,6 +31,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.middleware("http")(rate_limit_headers)
 @app.get("/")
 async def root():
     """root"""

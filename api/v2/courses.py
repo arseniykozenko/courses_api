@@ -3,11 +3,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from utils.database import get_db
 from utils.jwt import get_current_user
+from utils.rate_limit import rate_limit
+from utils.idempotency import idempotency_guard
+from utils.redis import redis_client
 from api.v2.schemas import CourseResponse, CourseCreate, CourseUpdate
 from services.courses import CourseService
 
 
-router = APIRouter(prefix="/api/v2/courses", tags=["Courses v2"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/api/v2/courses", tags=["Courses v2"], dependencies=[Depends(get_current_user), Depends(rate_limit)])
 
 get_db()
 
@@ -35,11 +38,19 @@ async def get_course(course_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=CourseResponse)
-async def create_course(course: CourseCreate, db: Session = Depends(get_db)):
+async def create_course(
+    course: CourseCreate,
+    db: Session = Depends(get_db),
+    idempotency_key: str = Depends(idempotency_guard)
+    ):
     """create course"""
     course_service = CourseService(db)
     try:
         new_course = course_service.create_course(course)
+        course_response = CourseResponse.model_validate(new_course)
+        if idempotency_key:
+            key = f"idempotency:{idempotency_key}"
+            redis_client.setex(key, 300, course_response.model_dump_json())
         return new_course
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось создать курс: {e}")

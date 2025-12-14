@@ -1,12 +1,15 @@
-"""Users Router for v1 api"""
+"""Users Router for v2 api"""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from api.v2.schemas import UserCreate, UserUpdate, UserResponse
 from utils.database import get_db
 from utils.jwt import get_current_user
+from utils.rate_limit import rate_limit
+from utils.idempotency import idempotency_guard
+from utils.redis import redis_client
 from services.users import UserService
 
-router = APIRouter(prefix="/api/v2/users", tags=["Users v2"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/api/v2/users", tags=["Users v2"], dependencies=[Depends(get_current_user), Depends(rate_limit)])
 
 get_db()
 
@@ -32,7 +35,7 @@ async def get_user(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Не удалось получить пользователя: {e}")
 
 @router.post("/", response_model=UserResponse)
-async def create_user(user: UserCreate, db: Session = Depends(get_db)):
+async def create_user(user: UserCreate, db: Session = Depends(get_db), idempotency_key: str = Depends(idempotency_guard)):
     """create user"""
     service = UserService(db)
     db_email = service.get_user_by_email(user.email)
@@ -40,6 +43,10 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Почта уже существует")
     try:
         new_user = service.create_user(user)
+        user_response = UserResponse.model_validate(new_user)
+        if idempotency_key:
+            key = f"idempotency:{idempotency_key}"
+            redis_client.setex(key, 300, user_response.model_dump_json())
         return new_user
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось создать пользователя: {e}")
