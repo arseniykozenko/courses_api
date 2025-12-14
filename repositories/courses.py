@@ -15,9 +15,14 @@ class CourseRepository:
         """get course by title"""
         return self.db.query(models.Course).filter(models.Course.title == title).first()
 
-    def get_all(self):
+    def get_all(self, offset: int, limit: int):
         """get all courses"""
-        return self.db.query(models.Course).all()
+        return(
+            self.db.query(models.Course)
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
 
     def create(self, course: models.Course):
         """create course"""

@@ -7,9 +7,14 @@ class UserRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(self):
+    def get_all(self, offset: int, limit: int):
         """get all users"""
-        return self.db.query(models.User).all()
+        return(
+            self.db.query(models.User)
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
     
     def get_by_id(self, user_id: int):
         """get user by id"""

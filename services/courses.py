@@ -8,9 +8,10 @@ class CourseService:
     def __init__(self, db):
         self.course_repository = CourseRepository(db)
     
-    def get_all_courses(self):
+    def get_all_courses(self, page: int, size: int):
         """get all courses"""
-        return self.course_repository.get_all()
+        offset = (page - 1) * size
+        return self.course_repository.get_all(offset, size)
     
     def get_course_by_title(self, title: str):
         """get course by title"""

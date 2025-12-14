@@ -12,9 +12,10 @@ class UserService:
     def __init__(self, db: Session):
         self.user_repository = UserRepository(db)
 
-    def get_users(self):
+    def get_users(self, page: int, size: int):
         """get all users"""
-        return self.user_repository.get_all()
+        offset = (page - 1) * size
+        return self.user_repository.get_all(offset, size)
 
     def get_user_by_id(self, user_id: int):
         """get user by id"""

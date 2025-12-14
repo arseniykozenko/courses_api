@@ -11,9 +11,14 @@ class EnrollmentRepository:
         """get enrollment by id"""
         return self.db.query(models.Enrollment).filter(models.Enrollment.id == enrollment_id).first()
 
-    def get_all(self):
+    def get_all(self, offset: int, limit: int):
         """get all enrollments"""
-        return self.db.query(models.Enrollment).all()
+        return(
+            self.db.query(models.Enrollment)
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
     
     def get_enrollments_by_user_id(self, user_id: int):
         """get enrollments by user id"""

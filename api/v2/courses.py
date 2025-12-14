@@ -1,5 +1,5 @@
 """courses router"""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from utils.database import get_db
 from utils.jwt import get_current_user
@@ -15,11 +15,16 @@ router = APIRouter(prefix="/api/v2/courses", tags=["Courses v2"], dependencies=[
 get_db()
 
 @router.get("/", response_model=list[CourseResponse])
-async def get_courses(db: Session = Depends(get_db)):
+async def get_courses(
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+    db: Session = Depends(get_db),
+    ):
     """get all courses"""
     course_service = CourseService(db)
     try:
-        return course_service.get_all_courses()
+        courses = course_service.get_all_courses(page, size)
+        return [CourseResponse.model_validate(course) for course in courses]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось получить курсы: {e}")
 
