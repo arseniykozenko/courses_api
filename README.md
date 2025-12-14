@@ -160,11 +160,9 @@ curl -X GET \
 ```
 #### Response body
 ```
-```
 {
   "detail": "Too many requests"
 }
-```
 ```
 #### Response headers
 ```
