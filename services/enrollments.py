@@ -8,10 +8,18 @@ class EnrollmentService:
     def __init__(self, db):
         self.enrollment_repository = EnrollmentRepository(db)
 
-    def get_all_enrollments(self, page: int, size: int):
+    def get_all_enrollments(self, page: int, size: int, fields: list[str] | None = None):
         """get all enrollments"""
         offset = (page - 1) * size
-        return self.enrollment_repository.get_all(offset, size)
+        enrollments = self.enrollment_repository.get_all(offset, size)
+        if not fields:
+            return enrollments
+        allowed = {'id', 'user_id', 'course_id', 'created_at', 'updated_at'}
+        fields = set(fields) & allowed
+        result = []
+        for enrollment in enrollments:
+            result.append({field: getattr(enrollment, field) for field in fields})
+        return result
 
     def get_enrollment_by_id(self, enrollment_id: int):
         """get enrollment by id"""

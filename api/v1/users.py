@@ -1,5 +1,5 @@
 """Users Router for v1 api"""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from api.v1.schemas import UserCreate, UserUpdate, UserResponse
 from utils.database import get_db
@@ -11,11 +11,16 @@ router = APIRouter(prefix="/api/v1/users", tags=["Users v1"])
 get_db()
 
 @router.get("/", response_model=list[UserResponse])
-async def get_users(db: Session = Depends(get_db)):
+async def get_users(
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+    db: Session = Depends(get_db)
+    ):
     """get all users"""
     service = UserService(db)
     try:
-        return service.get_users()
+        users = service.get_users(page, size)
+        return [UserResponse.model_validate(user) for user in users]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось получить пользователей: {e}")
 

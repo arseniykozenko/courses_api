@@ -8,10 +8,18 @@ class CourseService:
     def __init__(self, db):
         self.course_repository = CourseRepository(db)
     
-    def get_all_courses(self, page: int, size: int):
+    def get_all_courses(self, page: int, size: int, fields: list[str] | None = None):
         """get all courses"""
         offset = (page - 1) * size
-        return self.course_repository.get_all(offset, size)
+        courses = self.course_repository.get_all(offset, size)
+        if not fields:
+            return courses
+        allowed = {'id', 'title', 'description', 'created_at', 'updated_at'}
+        fields = set(fields) & allowed
+        result = []
+        for course in courses:
+            result.append({field: getattr(course, field) for field in fields})
+        return result
     
     def get_course_by_title(self, title: str):
         """get course by title"""

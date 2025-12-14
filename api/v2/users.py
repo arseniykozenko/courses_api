@@ -13,17 +13,21 @@ router = APIRouter(prefix="/api/v2/users", tags=["Users v2"], dependencies=[Depe
 
 get_db()
 
-@router.get("/", response_model=list[UserResponse])
+@router.get("/")
 async def get_users(
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
+    fields: str | None = Query(None),
     db: Session = Depends(get_db)
     ):
     """get all users"""
     service = UserService(db)
     try:
-        users = service.get_users(page, size)
-        return [UserResponse.model_validate(user) for user in users]
+        fields_list = fields.split(",") if fields else None
+        users = service.get_users(page, size, fields_list)
+        if fields_list is None:
+            return [UserResponse.model_validate(user) for user in users]
+        return users
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось получить пользователей: {e}")
 

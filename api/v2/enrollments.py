@@ -15,17 +15,21 @@ router = APIRouter(prefix="/api/v2/enrollments", tags=["Enrollments v2"], depend
 
 get_db()
 
-@router.get("/", response_model=list[EnrollmentResponse])
+@router.get("/")
 async def get_enrollments(
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
+    fields: str | None = Query(None),
     db: Session = Depends(get_db)
     ):
     """get all enrollments"""
     enrollment_service = EnrollmentService(db)
     try:
-        enrollments = enrollment_service.get_all_enrollments(page, size)
-        return [EnrollmentResponse.model_validate(enrollment) for enrollment in enrollments]
+        fields_list = fields.split(",") if fields else None
+        enrollments = enrollment_service.get_all_enrollments(page, size, fields_list)
+        if fields_list is None:
+            return [EnrollmentResponse.model_validate(enrollment) for enrollment in enrollments]
+        return enrollments
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось получить записи на курсы: {e}")
 

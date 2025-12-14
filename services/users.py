@@ -12,10 +12,18 @@ class UserService:
     def __init__(self, db: Session):
         self.user_repository = UserRepository(db)
 
-    def get_users(self, page: int, size: int):
+    def get_users(self, page: int, size: int, fields: list[str] | None = None):
         """get all users"""
         offset = (page - 1) * size
-        return self.user_repository.get_all(offset, size)
+        users = self.user_repository.get_all(offset, size)
+        if not fields:
+            return users
+        allowed = {'id', 'email', 'first_name', 'last_name', 'patronymic', 'created_at', 'updated_at'}
+        fields = set(fields) & allowed
+        result = []
+        for user in users:
+            result.append({field: getattr(user, field) for field in fields})
+        return result
 
     def get_user_by_id(self, user_id: int):
         """get user by id"""

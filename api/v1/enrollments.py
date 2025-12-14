@@ -1,5 +1,5 @@
 """enrollments router"""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from utils.database import get_db
 from api.v1.schemas import EnrollmentResponse, EnrollmentCreate
@@ -12,11 +12,16 @@ router = APIRouter(prefix="/api/v1/enrollments", tags=["Enrollments v1"])
 get_db()
 
 @router.get("/", response_model=list[EnrollmentResponse])
-async def get_enrollments(db: Session = Depends(get_db)):
+async def get_enrollments(
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+    db: Session = Depends(get_db)
+    ):
     """get all enrollments"""
     enrollment_service = EnrollmentService(db)
     try:
-        return enrollment_service.get_all_enrollments()
+        enrollments = enrollment_service.get_all_enrollments(page, size)
+        return [EnrollmentResponse.model_validate(enrollment) for enrollment in enrollments]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось получить записи на курсы: {e}")
 

@@ -14,17 +14,21 @@ router = APIRouter(prefix="/api/v2/courses", tags=["Courses v2"], dependencies=[
 
 get_db()
 
-@router.get("/", response_model=list[CourseResponse])
+@router.get("/")
 async def get_courses(
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
+    fields: str | None = Query(None),
     db: Session = Depends(get_db),
     ):
     """get all courses"""
     course_service = CourseService(db)
     try:
-        courses = course_service.get_all_courses(page, size)
-        return [CourseResponse.model_validate(course) for course in courses]
+        fields_list = fields.split(",") if fields else None
+        courses = course_service.get_all_courses(page, size, fields_list)
+        if fields_list is None:
+            return [CourseResponse.model_validate(course) for course in courses]
+        return courses
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось получить курсы: {e}")
 
