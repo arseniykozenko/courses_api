@@ -1,34 +1,24 @@
-"""idempotency util"""
 import json
-from fastapi import Header, HTTPException
 from utils.redis import redis_client
 
-async def idempotency_guard(
-    idempotency_key: str = Header(alias="Idempotency-Key"),
-):
-    """idempotency guard"""
-    if not idempotency_key:
-        return None
+TTL_SECONDS = 300
 
-    if len(idempotency_key) > 255:
-        raise HTTPException(
-            status_code=400,
-            detail="Idempotency key is too long"
-        )
-    if not idempotency_key.strip():
-        raise HTTPException(
-            status_code=400,
-            detail="Idempotency key is empty"
-        )
-
-    key = f"idempotency:{idempotency_key}"
-
-    cached = redis_client.get(key)
+def get_cached_response(request_id: str):
+    """
+    Возвращает закэшированный ответ, если он есть
+    """
+    cached = redis_client.get(f"idempotency:{request_id}")
     if cached:
-        data = json.loads(cached)
-        raise HTTPException(
-            status_code=200,
-            detail=data
-        )
-     
-    return idempotency_key
+        return json.loads(cached)
+    return None
+
+
+def cache_response(request_id: str, response: dict):
+    """
+    Сохраняет ответ для идемпотентности
+    """
+    redis_client.setex(
+        f"idempotency:{request_id}",
+        TTL_SECONDS,
+        json.dumps(response)
+    )

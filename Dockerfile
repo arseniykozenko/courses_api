@@ -24,4 +24,4 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "sleep 20 && uvicorn main:app --host 0.0.0.0 --port 8080 --reload"]
+CMD ["sh", "-c", "sleep 20 && python -m messaging.worker"]
