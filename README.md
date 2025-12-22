@@ -1,8 +1,9 @@
-# Courses API
+# Courses API - Messaging Worker
 
 ## Introduction
 CourseAPI — это сервис для управления пользователями, курсами и записями на курсы.
-Система предоставляет операции для регистрации пользователей, аутентификации, получения списка пользователей, создания курсов и записей на курсы.
+В этой лабораторной используется RabbitMQ для обмена сообщениями вместо REST API.
+Клиент публикует запросы в очередь api.requests, worker обрабатывает их и отправляет ответ в очередь api.responses.
 
 ## Installation
 Выполните следующие действия, чтобы установить и запустить приложение.
@@ -18,19 +19,35 @@ CourseAPI — это сервис для управления пользоват
 4. Создайте файл окружения .env. Пример:
     ```
     DATABASE_URL=postgresql://postgres:admin@db:5432/courses_db
+    RABBITMQ_HOST=rabbitmq
+    RABBITMQ_USER=admin
+    RABBITMQ_PASS=admin
+    RABBITMQ_PORT=5672
     INTERNAL_API_KEY=example-key
+
     ```
 5. Запустите все необходимые сервисы с помощью docker-compose
     ```
     docker-compose up --build
     ```
-6. Перейдите в документацию Swagger UI
+6. Запустите тест-клиент
     ```
-    http://localhost:8080/docs
+    python -m messaging.client_test
     ```
-## Аутентификация
-В API используется JWT Bearer Authentication.
-После успешного логина необходимо передавать токен в заголовке с помощью Authorize:
+## Архитектура
+#### Queues:
+```
+api.requests — входящие запросы.
+api.responses — исходящие ответы.
+dlq.requests — Dead Letter Queue для необрабатываемых сообщений.
+```
+#### Properties:
+```
+correlation_id — уникальный идентификатор запроса.
+reply_to — очередь, куда worker отправляет ответ.
+```
+#### Versioning: 
+поддерживаются версии сообщений (v1, v2). В v2 добавлены пагинация (page, size) и новые схемы response.
     ```
     Authorization: Bearer <ACCESS_TOKEN>
     ```
