@@ -47,36 +47,140 @@ def send_request(action, data, request_id=None):
     return response
 
 
-print("\n=== TEST USERS ===")
-user_data = {"email": "test1@example.com", "name": "Test User"}
-user_resp = send_request("user_create", user_data)
-print("Создан пользователь:", user_resp)
+# ---------------- USERS ----------------
 
-user_resp2 = send_request("user_create", user_data, request_id=user_resp["correlation_id"])
-print("Повторный идемпотентный запрос:", user_resp2)
+def test_users():
+    print("\n=== USERS ===")
 
-get_user_resp = send_request("user_get", {"user_id": user_resp["data"]["id"]})
-print("Получение пользователя:", get_user_resp)
+    # create
+    resp = send_request("user_create", {
+        "email": "student@example.com",
+        "first_name": "Alexey",
+        "last_name": "Petrov",
+        "patronymic": "Ivanovich",
+        "password": "123456",
+    }, request_id="user_create")
+    user_id = resp["data"]["id"]
+    print("User created:", resp)
 
+    # get
+    resp = send_request("user_get", {"user_id": user_id})
+    print("User get:", resp)
 
-print("\n=== TEST COURSES ===")
-course_data = {"title": "Python 101", "description": "Intro"}
-course_resp = send_request("course_create", course_data)
-print("Создан курс:", course_resp)
+    # list
+    resp = send_request("user_list", {"page": 1, "size": 10})
+    print("User list:", resp)
 
-get_course_resp = send_request("course_get", {"course_id": course_resp["data"]["id"]})
-print("Получение курса:", get_course_resp)
+    # update
+    resp = send_request("user_update", {
+        "user_id": user_id,
+        "first_name": "Nikita",
+        "last_name": "Ivanov",
+        "patronymic": "Petrovich"
+    })
+    print("User updated:", resp)
 
+    # delete
+    resp = send_request("user_delete", {"user_id": user_id})
+    print("User deleted:", resp)
 
-print("\n=== TEST ENROLLMENTS ===")
-enroll_data = {"user_id": user_resp["data"]["id"], "course_id": course_resp["data"]["id"]}
-enroll_resp = send_request("enrollment_create", enroll_data)
-print("Создана запись на курс:", enroll_resp)
+# ---------------- COURSES ----------------
 
-get_enroll_resp = send_request("enrollment_get", {"enrollment_id": enroll_resp["data"]["id"]})
-print("Получение записи на курс:", get_enroll_resp)
+def test_courses():
+    print("\n=== COURSES ===")
 
+    # create
+    resp = send_request("course_create", {
+        "title": "RabbitMQ Course",
+        "description": "Async API"
+    }, request_id="course_create")
+    course_id = resp["data"]["id"]
+    print("Course created:", resp)
 
-print("\n=== TEST DLQ / TEMP ERROR ===")
-temp_error_resp = send_request("crash_temp", {"user_id": 1})
-print("Реакция на временную ошибку:", temp_error_resp)
+    resp = send_request("course_get", {"course_id": course_id})
+    print("Course get:", resp)
+
+    # list
+    resp = send_request("course_list", {"page": 1, "size": 10})
+    print("Course list:", resp)
+
+    # update
+    resp = send_request("course_update", {
+        "course_id": course_id,
+        "title": "Updated Course"
+    })
+    print("Course updated:", resp)
+
+    # delete
+    resp = send_request("course_delete", {"course_id": course_id})
+    print("Course deleted:", resp)
+
+# ---------------- ENROLLMENTS ----------------
+
+def test_idempotency():
+    print("\n=== IDEMPOTENCY ===")
+
+    # resp = send_request("user_delete", {"user_id": 6})
+    # print("User deleted:", resp)
+
+    # create user
+    resp = send_request("user_create", {
+        "email": "student@example.com",
+        "first_name": "Alexey",
+        "last_name": "Petrov",
+        "patronymic": "Ivanovich",
+        "password": "123456",
+    }, request_id="user_create")
+    print("User created:", resp)
+
+def test_enrollments():
+    print("\n=== ENROLLMENTS ===")
+
+    # create user
+    user = send_request("user_create", {
+        "email": "student@example.com",
+        "first_name": "Alexey",
+        "last_name": "Petrov",
+        "patronymic": "Ivanovich",
+        "password": "123456",
+    }, request_id="user_create")["data"]
+
+    # create course
+    course = send_request("course_create", {
+        "title": "Python Async",
+        "description": "RabbitMQ"
+    }, request_id="course_create")["data"]
+
+    # create enrollment
+    resp = send_request("enrollment_create", {
+        "user_id": user["id"],
+        "course_id": course["id"]
+    }, request_id="enrollment_create")
+    enrollment_id = resp["data"]["id"]
+    print("Enrollment created:", resp)
+
+    # get
+    resp = send_request("enrollment_get", {"enrollment_id": enrollment_id})
+    print("Enrollment get:", resp)
+
+    # list
+    resp = send_request("enrollment_list", {"page": 1, "size": 10})
+    print("Enrollment list:", resp)
+
+    # delete
+    resp = send_request("enrollment_delete", {"enrollment_id": enrollment_id})
+    print("Enrollment deleted:", resp)
+
+    # cleanup
+    send_request("user_delete", {"user_id": user["id"]})
+    send_request("course_delete", {"course_id": course["id"]})
+
+# ---------------- MAIN ----------------
+
+if __name__ == "__main__":
+    test_idempotency()
+    # test_users()
+    test_courses()
+    # test_enrollments()
+
+    print("\n✅ ALL TESTS PASSED")

@@ -1,221 +1,228 @@
 import json
+import logging
 import pika
+from datetime import datetime
+
 from messaging.rabbitmq import channel
 from messaging.queues import REQUEST_QUEUE, DLQ_QUEUE
+
 from utils.auth import check_api_key
 from utils.idempotency import get_cached_response, cache_response
 from utils.database import get_db
-from services.courses import CourseService
+
 from services.users import UserService
+from services.courses import CourseService
 from services.enrollments import EnrollmentService
-from api.v2.schemas import CourseCreate, CourseUpdate, UserCreate, UserUpdate, EnrollmentCreate, CourseResponse, UserResponse, EnrollmentResponse
+
+from api.v1.schemas import UserResponse as UserResponseV1, CourseResponse as CourseResponseV1, EnrollmentResponse as EnrollmentResponseV1
+from api.v2.schemas import (
+    UserCreate, UserUpdate, UserResponse as UserResponseV2,
+    CourseCreate, CourseUpdate, CourseResponse as CourseResponseV2,
+    EnrollmentCreate, EnrollmentResponse as EnrollmentResponseV2
+)
+
+# -------------------- RESPONSE --------------------
+def serialize(obj):
+    """Преобразуем объекты в JSON-сериализуемые"""
+    if isinstance(obj, dict):
+        return {k: serialize(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [serialize(v) for v in obj]
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
+    else:
+        return obj
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler("worker.log"),
+        logging.StreamHandler()
+    ]
+)
+
+MAX_RETRIES = 3
+RETRY_DELAY = 5
 
 def send_response(properties, correlation_id, status, data=None, error=None):
     if not properties or not properties.reply_to:
-        print("Нет reply_to, невозможно отправить ответ")
+        logging.warning("Нет reply_to — ответ не отправлен")
         return
 
     response = {
         "correlation_id": correlation_id,
         "status": status,
-        "data": data,
+        "data": serialize(data),
         "error": error
     }
 
     channel.basic_publish(
-        exchange='',
-        routing_key=str(properties.reply_to),
+        exchange="",
+        routing_key=properties.reply_to,
         properties=pika.BasicProperties(
-            correlation_id=str(properties.correlation_id)
+            correlation_id=properties.correlation_id
         ),
         body=json.dumps(response)
     )
 
+# -------------------- HANDLER --------------------
 def on_message(ch, method, properties, body):
     request = json.loads(body)
     request_id = request.get("id")
     action = request.get("action")
     data = request.get("data", {})
+    version = request.get("version", "v1")
 
-    # Идемпотентность
-    cached_response = get_cached_response(request_id)
-    if cached_response:
-        print(f"Идемпотентный ответ для {request_id}")
-        send_response(properties, request_id, **cached_response)
+    # ---------- idempotency ----------
+    cached = get_cached_response(request_id)
+    if cached:
+        send_response(
+            properties,
+            correlation_id=request_id,
+            status=cached.get("status"),
+            data=cached.get("data"),
+            error=cached.get("error")
+        )
         ch.basic_ack(delivery_tag=method.delivery_tag)
         return
 
-    # Аутентификация
+    # ---------- auth ----------
     if not check_api_key(request.get("auth")):
         send_response(properties, request_id, status="error", error="Unauthorized")
         ch.basic_ack(delivery_tag=method.delivery_tag)
         return
 
-    print("Авторизованный запрос:", request)
-
-    db = get_db()
+    db = next(get_db())
 
     try:
-        response_data = {}
+        response_data = None
 
-        # ----------------- USERS -----------------
-        if action.startswith("user_"):
+        # ================= USERS =================
+        if action == "user_get":
             service = UserService(db)
-            if action == "user_get":
-                user_id = data.get("user_id")
-                user = service.get_user_by_id(user_id)
-                if not user:
-                    raise ValueError("Пользователь не найден")
+            user = service.get_user_by_id(data["user_id"])
+            if not user:
+                raise ValueError("User not found")
+            response_data = (UserResponseV1 if version=="v1" else UserResponseV2).model_validate(user).model_dump()
+
+        elif action == "user_list":
+            service = UserService(db)
+            page = data.get("page", 1)
+            size = data.get("size", 10)
+            users = service.get_users(page, size)
+            if version == "v1":
+                response_data = [(UserResponseV1).model_validate(u).model_dump() for u in users]
+            else:
                 response_data = {
-                    "status": "ok",
-                    "data": UserResponse.model_validate(user).model_dump(),
-                    "error": None
-                }
-            elif action == "user_create":
-                user_obj = UserCreate(**data)
-                new_user = service.create_user(user_obj)
-                response_data = {
-                    "status": "ok",
-                    "data": UserResponse.model_validate(new_user).model_dump(),
-                    "error": None
-                }
-            elif action == "user_update":
-                user_id = data.get("user_id")
-                user_obj = UserUpdate(**data)
-                updated = service.update_user(user_id, user_obj)
-                response_data = {
-                    "status": "ok",
-                    "data": UserResponse.model_validate(updated).model_dump(),
-                    "error": None
-                }
-            elif action == "user_delete":
-                user_id = data.get("user_id")
-                user = service.get_user_by_id(user_id)
-                if not user:
-                    raise ValueError("Пользователь не найден")
-                service.delete_user(user_id)
-                response_data = {
-                    "status": "ok",
-                    "data": {"deleted_user_id": user_id},
-                    "error": None
+                    "items": [UserResponseV2.model_validate(u).model_dump() for u in users],
+                    "page": page,
+                    "size": size
                 }
 
-        # ----------------- COURSES -----------------
-        elif action.startswith("course_"):
+        elif action == "user_create":
+            service = UserService(db)
+            user = service.create_user(UserCreate(**data))
+            response_data = (UserResponseV1 if version=="v1" else UserResponseV2).model_validate(user).model_dump()
+
+        elif action == "user_update":
+            service = UserService(db)
+            user = service.update_user(data["user_id"], UserUpdate(**data))
+            response_data = (UserResponseV1 if version=="v1" else UserResponseV2).model_validate(user).model_dump()
+
+        elif action == "user_delete":
+            service = UserService(db)
+            service.delete_user(data["user_id"])
+            response_data = {"deleted_user_id": data["user_id"]}
+
+        # ================= COURSES =================
+        elif action == "course_get":
             service = CourseService(db)
-            if action == "course_get":
-                course_id = data.get("course_id")
-                course = service.get_course_by_id(course_id)
-                if not course:
-                    raise ValueError("Курс не найден")
+            course = service.get_course_by_id(data["course_id"])
+            if not course:
+                raise ValueError("Course not found")
+            response_data = (CourseResponseV1 if version=="v1" else CourseResponseV2).model_validate(course).model_dump()
+
+        elif action == "course_list":
+            service = CourseService(db)
+            page = data.get("page", 1)
+            size = data.get("size", 10)
+            courses = service.get_all_courses(page, size)
+            if version == "v1":
+                response_data = [(CourseResponseV1).model_validate(c).model_dump() for c in courses]
+            else:
                 response_data = {
-                    "status": "ok",
-                    "data": CourseResponse.model_validate(course).model_dump(),
-                    "error": None
-                }
-            elif action == "course_create":
-                course_obj = CourseCreate(**data)
-                new_course = service.create_course(course_obj)
-                response_data = {
-                    "status": "ok",
-                    "data": CourseResponse.model_validate(new_course).model_dump(),
-                    "error": None
-                }
-            elif action == "course_update":
-                course_id = data.get("course_id")
-                course_obj = CourseUpdate(**data)
-                updated = service.update_course(course_id, course_obj)
-                response_data = {
-                    "status": "ok",
-                    "data": CourseResponse.model_validate(updated).model_dump(),
-                    "error": None
-                }
-            elif action == "course_delete":
-                course_id = data.get("course_id")
-                course = service.get_course_by_id(course_id)
-                if not course:
-                    raise ValueError("Курс не найден")
-                service.delete_course(course_id)
-                response_data = {
-                    "status": "ok",
-                    "data": {"deleted_course_id": course_id},
-                    "error": None
+                    "items": [CourseResponseV2.model_validate(c).model_dump() for c in courses],
+                    "page": page,
+                    "size": size
                 }
 
-        # ----------------- ENROLLMENTS -----------------
-        elif action.startswith("enrollment_"):
+        elif action == "course_create":
+            service = CourseService(db)
+            course = service.create_course(CourseCreate(**data))
+            response_data = (CourseResponseV1 if version=="v1" else CourseResponseV2).model_validate(course).model_dump()
+
+        elif action == "course_update":
+            service = CourseService(db)
+            course = service.update_course(data["course_id"], CourseUpdate(**data))
+            response_data = (CourseResponseV1 if version=="v1" else CourseResponseV2).model_validate(course).model_dump()
+
+        elif action == "course_delete":
+            service = CourseService(db)
+            service.delete_course(data["course_id"])
+            response_data = {"deleted_course_id": data["course_id"]}
+
+        # ================= ENROLLMENTS =================
+        elif action == "enrollment_get":
             service = EnrollmentService(db)
-            user_service = UserService(db)
-            course_service = CourseService(db)
+            enrollment = service.get_enrollment_by_id(data["enrollment_id"])
+            if not enrollment:
+                raise ValueError("Enrollment not found")
+            response_data = (EnrollmentResponseV1 if version=="v1" else EnrollmentResponseV2).model_validate(enrollment).model_dump()
 
-            if action == "enrollment_create":
-                enrollment_obj = EnrollmentCreate(**data)
-                if not course_service.get_course_by_id(enrollment_obj.course_id):
-                    raise ValueError("Курс не найден")
-                if not user_service.get_user_by_id(enrollment_obj.user_id):
-                    raise ValueError("Пользователь не найден")
-                new_enrollment = service.create_enrollment(enrollment_obj)
+        elif action == "enrollment_list":
+            service = EnrollmentService(db)
+            page = data.get("page", 1)
+            size = data.get("size", 10)
+            enrollments = service.get_all_enrollments(page, size)
+            if version == "v1":
+                response_data = [(EnrollmentResponseV1).model_validate(e).model_dump() for e in enrollments]
+            else:
                 response_data = {
-                    "status": "ok",
-                    "data": EnrollmentResponse.model_validate(new_enrollment).model_dump(),
-                    "error": None
+                    "items": [EnrollmentResponseV2.model_validate(e).model_dump() for e in enrollments],
+                    "page": page,
+                    "size": size
                 }
-            elif action == "enrollment_delete":
-                enrollment_id = data.get("enrollment_id")
-                enrollment = service.get_enrollment_by_id(enrollment_id)
-                if not enrollment:
-                    raise ValueError("Запись на курс не найдена")
-                service.delete_enrollment(enrollment_id)
-                response_data = {
-                    "status": "ok",
-                    "data": {"deleted_enrollment_id": enrollment_id},
-                    "error": None
-                }
-            elif action == "enrollment_get":
-                enrollment_id = data.get("enrollment_id")
-                enrollment = service.get_enrollment_by_id(enrollment_id)
-                if not enrollment:
-                    raise ValueError("Запись на курс не найдена")
-                response_data = {
-                    "status": "ok",
-                    "data": EnrollmentResponse.model_validate(enrollment).model_dump(),
-                    "error": None
-                }
-            elif action == "enrollment_get_by_user_id":
-                user_id = data.get("user_id")
-                enrollments = service.get_enrollments_by_user_id(user_id)
-                response_data = {
-                    "status": "ok",
-                    "data": [EnrollmentResponse.model_validate(enrollment).model_dump() for enrollment in enrollments],
-                    "error": None
-                }
-            elif action == "enrollment_get_by_course_id":
-                course_id = data.get("course_id")
-                enrollments = service.get_enrollments_by_course_id(course_id)
-                response_data = {
-                    "status": "ok",
-                    "data": [EnrollmentResponse.model_validate(enrollment).model_dump() for enrollment in enrollments],
-                    "error": None
-                }
+
+        elif action == "enrollment_create":
+            service = EnrollmentService(db)
+            enrollment = service.create_enrollment(EnrollmentCreate(**data))
+            response_data = (EnrollmentResponseV1 if version=="v1" else EnrollmentResponseV2).model_validate(enrollment).model_dump()
+
+        elif action == "enrollment_delete":
+            service = EnrollmentService(db)
+            service.delete_enrollment(data["enrollment_id"])
+            response_data = {"deleted_enrollment_id": data["enrollment_id"]}
 
         else:
-            raise ValueError(f"Неизвестное действие: {action}")
+            raise ValueError(f"Unknown action: {action}")
 
-        # Кэшируем для идемпотентности
-        cache_response(request_id, response_data)
+        safe_response = serialize(response_data)
+        cache_response(request_id, safe_response)
 
-        # Отправляем ответ клиенту
-        send_response(properties, request_id, **response_data)
+        send_response(properties, request_id, status="ok", data=safe_response)
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
-        print(f"Ошибка при обработке {request_id}: {e}")
-        # Отправка в DLQ
-        channel.basic_publish(exchange='', routing_key=DLQ_QUEUE, body=body)
+        logging.error(f"Ошибка при обработке запроса {request_id}: {e}")
+        # DLQ
+        channel.basic_publish(exchange="", routing_key=DLQ_QUEUE, body=body)
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
+    finally:
+        db.close()
 
-# Запуск worker
+# -------------------- START --------------------
 channel.basic_consume(queue=REQUEST_QUEUE, on_message_callback=on_message)
-print(" [*] Worker для users, courses и enrollments запущен")
+logging.info(" [*] Unified worker (users, courses, enrollments) started")
 channel.start_consuming()
