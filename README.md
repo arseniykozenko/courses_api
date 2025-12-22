@@ -48,139 +48,117 @@ reply_to — очередь, куда worker отправляет ответ.
 ```
 #### Versioning: 
 поддерживаются версии сообщений (v1, v2). В v2 добавлены пагинация (page, size) и новые схемы response.
-    ```
-    Authorization: Bearer <ACCESS_TOKEN>
-    ```
-## REST API
+
+## Аутентификация:
+  Для всех запросов требуется auth ключ (API key), передаваемый в поле auth сообщения.
+  Если ключ неверный → возвращается статус error и сообщение "Unauthorized".
+  Idempotency ключ (request ID / correlation_id) защищает от дублирующих запросов.
+## Примеры запросов и ответов
 Примеры запросов описаны ниже.
-### [1] Register
+### [1] User Create
 #### Request
-`POST /api/v2/auth/register`
 ```
-curl -X POST \
-  'http://localhost:8080/api/v2/auth/register' \
-  -H 'accept: application/json' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "email": "test@gmail.com",
-    "password": "testpass",
-    "first_name": "Ivanov",
-    "last_name": "Ivan",
-    "patronymic": "Ivanovich"
-  }'
+{
+  "id": "uuid-1234",
+  "version": "v2",
+  "action": "user_create",
+  "data": {
+    "email": "student@example.com",
+    "first_name": "Alexey",
+    "last_name": "Petrov",
+    "patronymic": "Ivanovich",
+    "password": "123456"
+  },
+  "auth": "api-key"
+}
 ```
 #### Response
 ```
 {
-    "id": <USER_ID>
-    "email": "test@gmail.com",
-    "password": "testpass",
-    "first_name": "Ivanov",
-    "last_name": "Ivan",
-    "patronymic": "Ivanovich"
-    "created_at": <ISO_TIMESTAMP>
-    "updatet_at": <ISO_TIMESTAMP>
-}
-```
-
-### [2] Login
-#### Request
-`POST /api/v2/auth/login`
-```
-curl -X POST \
-  'http://localhost:8080/api/v2/auth/login' \
-  -H 'accept: application/json' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "email": "test@gmail.com",
-    "password": "testpass"
-  }'
-```
-#### Response body
-```
-{
-  "access": "<YOUR_ACCESS_TOKEN>"
-  "token_type: "Bearer"
-}
-```
-
-### [3] Get list of Courses
-#### Request
-`GET /api/v2/courses/`
-```
-curl -X GET \
-  'http://localhost:8080/api/v2/courses/?page=1&size=10&fields=id,title' \
-  -H 'accept: application/json' \
-  -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>'
-```
-#### Response body
-```
-[
-  {
-    "id": <COURSE_ID>,
-    "title": "Математика",
+  "correlation_id": "uuid-1234",
+  "status": "ok",
+  "data": {
+    "id": 1,
+    "email": "student@example.com",
+    "first_name": "Alexey",
+    "last_name": "Petrov",
+    "patronymic": "Ivanovich",
+    "created_at": <ISO_TIMESTAMP>,
+    "updated_at": <ISO_TIMESTAMP>
   },
-  {
-    "id": <COURSE_ID>,
-    "title": "Программирование",
+  "error": null
+}
+
+```
+
+### [2] Get Courses
+#### Request
+```
+{
+  "id": "uuid-5678",
+  "version": "v2",
+  "action": "course_list",
+  "data": {
+    "page": 1,
+    "size": 10
   },
-]
+  "auth": "api-key"
+}
+
+```
+#### Response
+```
+{
+  "correlation_id": "uuid-5678",
+  "status": "ok",
+  "data": {
+    "items": [
+      {"id": 1, "title": "Математика", "description": "Курс по математике"},
+      {"id": 2, "title": "Программирование", "description": "Программирование на Python"}
+    ],
+    "page": 1,
+    "size": 10
+  },
+  "error": null
+}
+
 ```
 
-### [4] Create course
-#### Request
-`POST /api/v2/courses/`
-```
-curl -X POST \
-  'http://localhost:8080/api/v2/courses/' \
-  -H 'accept: application/json' \
-  -H 'IdempotencyKey: course123' \
-  -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "title": "Английский Язык",
-    "description": "Уроки английского языка"
-  }'
-```
-#### Response body
+### [3] Ошибка авторизации (Unauthorized)
+#### Response
 ```
 {
-  "id": <COURSE_ID>,
-  "title": "Английский язык",
-  "description": "Уроки английского языка",
-  "created_at": <ISO_TIMESTAMP>,
-  "updated_at": <ISO_TIMESTAMP>
+  "correlation_id": "uuid-5678",
+  "status": "error",
+  "data": null,
+  "error": "Unauthorized"
 }
 ```
 
-### [5] Get course by ID
+### [4] Повторный запрос (Idempotency)
+```
+Если id запроса уже обработан, worker возвращает кешированный ответ.
+Дублирующие операции не выполняются, данные не изменяются.
+```
+
+### [5] Dead Letter Queue (DLQ)
 #### Request
-`GET /api/v2/courses/{id}`
 ```
-curl -X GET \
-  'http://localhost:8080/api/v2/courses/<COURSE_ID>?fields=id,title,description' \
-  -H 'accept: application/json' \
-  -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>'
+Сообщения, вызвавшие необрабатываемые ошибки (например, Unknown action), отправляются в очередь dlq.requests.
+Позволяет анализировать и повторно обрабатывать проблемные сообщения.
 ```
-#### Response body
+
+### Тестирование
+Для тестирования есть messaging/client_test.py, который отправляет запросы и получает ответы через RabbitMQ.
+Пример вызова:
+#### Request
 ```
-{
-  "id": <COURSE_ID>,
-  "title": "Математика",
-  "description": "Основы математики",
-}
-```
-### [6] Ограничение частоты запросов (Rate Limiting)
-Все конечные точки API защищены ограничением частоты запросов.
-При превышении лимита сервер возвращает ответ:
-#### Response body
-```
-{
-  "detail": "Too many requests"
-}
-```
-#### Response headers
-```
-retry-after: 60
-x-limit-remaining: 0
+response = send_request("user_create", {
+    "email": "student@example.com",
+    "first_name": "Alexey",
+    "last_name": "Petrov",
+    "patronymic": "Ivanovich",
+    "password": "123456"
+})
+print(response)
 ```
