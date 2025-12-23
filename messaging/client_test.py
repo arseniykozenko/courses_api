@@ -52,16 +52,18 @@ def send_request(action, data, request_id=None):
 def test_users():
     print("\n=== USERS ===")
 
-    # create
-    resp = send_request("user_create", {
-        "email": "student@example.com",
+    user_data = {
+        "email": "student1@example.com",
         "first_name": "Alexey",
         "last_name": "Petrov",
         "patronymic": "Ivanovich",
         "password": "123456",
-    }, request_id="user_create")
+    }
+    # create
+    resp = send_request("user_create", user_data, request_id="user_create")
     user_id = resp["data"]["id"]
     print("User created:", resp)
+    print("User id:", user_id)
 
     # get
     resp = send_request("user_get", {"user_id": user_id})
@@ -120,18 +122,18 @@ def test_courses():
 def test_idempotency():
     print("\n=== IDEMPOTENCY ===")
 
-    # resp = send_request("user_delete", {"user_id": 6})
+    # resp = send_request("user_delete", {"user_id": 7})
     # print("User deleted:", resp)
 
     # create user
-    resp = send_request("user_create", {
-        "email": "student@example.com",
-        "first_name": "Alexey",
-        "last_name": "Petrov",
-        "patronymic": "Ivanovich",
-        "password": "123456",
-    }, request_id="user_create")
-    print("User created:", resp)
+    # resp = send_request("user_create", {
+    #     "email": "student@example.com",
+    #     "first_name": "Alexey",
+    #     "last_name": "Petrov",
+    #     "patronymic": "Ivanovich",
+    #     "password": "123456",
+    # }, request_id="user_create")
+    # print("User created:", resp)
 
 def test_enrollments():
     print("\n=== ENROLLMENTS ===")
@@ -178,9 +180,9 @@ def test_enrollments():
 # ---------------- MAIN ----------------
 
 if __name__ == "__main__":
-    test_idempotency()
-    # test_users()
-    test_courses()
+    # test_idempotency()
+    test_users()
+    # test_courses()
     # test_enrollments()
 
-    print("\n✅ ALL TESTS PASSED")
+    print("\n ALL TESTS PASSED")

@@ -66,7 +66,6 @@ def send_response(properties, correlation_id, status, data=None, error=None):
         body=json.dumps(response)
     )
 
-# -------------------- HANDLER --------------------
 def on_message(ch, method, properties, body):
     request = json.loads(body)
     request_id = request.get("id")

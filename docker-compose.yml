@@ -1,19 +1,19 @@
 services:
-  course_system_app:
-    build: .
-    container_name: course_system_app
-    restart: always
-    env_file:
-      - .env
-    ports:
-      - "8080:8080"
-    depends_on:
-      - course_system_db
-      - redis
-    networks:
-      - course_system_network
-    extra_hosts:
-    - "host.docker.internal:host-gateway"
+  # course_system_app:
+  #   build: .
+  #   container_name: course_system_app
+  #   restart: always
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - course_system_db
+  #     - redis
+  #   networks:
+  #     - course_system_network
+  #   extra_hosts:
+  #   - "host.docker.internal:host-gateway"
 
   course_system_db:
     image: postgres:15
