@@ -3,6 +3,7 @@ __pycache__/
 *.py[codz]
 *$py.class
 alembic.ini
+lab3/
 
 # C extensions
 *.so

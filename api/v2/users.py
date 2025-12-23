@@ -31,15 +31,19 @@ async def get_users(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось получить пользователей: {e}")
 
-@router.get("/{user_id}", response_model=UserResponse)
-async def get_user(user_id: int, db: Session = Depends(get_db)):
+@router.get("/{user_id}")
+async def get_user(user_id: int, fields: str | None = Query(None), db: Session = Depends(get_db)):
     """get user by id"""
     service = UserService(db)
     user = service.get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     try:
-        return user
+        fields_list = fields.split(",") if fields else None
+        if fields_list is None:
+            return UserResponse.model_validate(user)
+        user_result = {field: getattr(user, field) for field in fields_list}
+        return user_result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось получить пользователя: {e}")
 

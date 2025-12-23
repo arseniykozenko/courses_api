@@ -25,9 +25,14 @@ class UserService:
             result.append({field: getattr(user, field) for field in fields})
         return result
 
-    def get_user_by_id(self, user_id: int):
+    def get_user_by_id(self, user_id: int, fields: list[str] | None = None):
         """get user by id"""
-        return self.user_repository.get_by_id(user_id)
+        if not fields:
+            return self.user_repository.get_by_id(user_id)
+        allowed = {'id', 'email', 'first_name', 'last_name', 'patronymic', 'created_at', 'updated_at'}
+        fields = set(fields) & allowed
+        result = {field: getattr(self.user_repository.get_by_id(user_id), field) for field in fields}
+        return result
 
     def get_user_by_email(self, email: str):
         """get user by email"""

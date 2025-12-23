@@ -29,9 +29,14 @@ class CourseService:
         """get course by title"""
         return self.course_repository.get_by_title(title)
 
-    def get_course_by_id(self, course_id: int):
+    def get_course_by_id(self, course_id: int, fields: list[str] | None = None):
         """get course by id"""
-        return self.course_repository.get_by_id(course_id)
+        if not fields:
+            return self.course_repository.get_by_id(course_id)
+        allowed = {'id', 'title', 'description', 'created_at', 'updated_at'}
+        fields = set(fields) & allowed
+        result = {field: getattr(self.course_repository.get_by_id(course_id), field) for field in fields}
+        return result
 
     def create_course(self, course: CourseCreate):
         """create course"""

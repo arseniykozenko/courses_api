@@ -33,19 +33,23 @@ async def get_enrollments(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось получить записи на курсы: {e}")
 
-@router.get("/{enrollment_id}", response_model=EnrollmentResponse)
-async def get_enrollment(enrollment_id: int, db: Session = Depends(get_db)):
+@router.get("/{enrollment_id}")
+async def get_enrollment(enrollment_id: int, fields: str | None = Query(None), db: Session = Depends(get_db)):
     """get enrollment by id"""
     enrollment_service = EnrollmentService(db)
     db_enrollment = enrollment_service.get_enrollment_by_id(enrollment_id)
     if not db_enrollment:
         raise HTTPException(404, "Запись на курс не найдена")
     try:
-        return db_enrollment
+        fields_list = fields.split(",") if fields else None
+        if fields_list is None:
+            return EnrollmentResponse.model_validate(db_enrollment)
+        enrollment_result = {field: getattr(db_enrollment, field) for field in fields_list}
+        return enrollment_result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось получить запись на курс: {e}")
 
-@router.get("/by-user/{user_id}", response_model=list[EnrollmentResponse])
+@router.get("/by-user/{user_id}")
 async def get_enrollments_by_user(user_id: int, db: Session = Depends(get_db)):
     """get enrollments by user id"""
     enrollment_service = EnrollmentService(db)

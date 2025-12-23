@@ -21,9 +21,14 @@ class EnrollmentService:
             result.append({field: getattr(enrollment, field) for field in fields})
         return result
 
-    def get_enrollment_by_id(self, enrollment_id: int):
+    def get_enrollment_by_id(self, enrollment_id: int, fields: list[str] | None = None):
         """get enrollment by id"""
-        return self.enrollment_repository.get_by_id(enrollment_id)
+        if not fields:
+            return self.enrollment_repository.get_by_id(enrollment_id)
+        allowed = {'id', 'user_id', 'course_id', 'created_at', 'updated_at'}
+        fields = set(fields) & allowed
+        result = {field: getattr(self.enrollment_repository.get_by_id(enrollment_id), field) for field in fields}
+        return result
 
     def get_enrollments_by_user_id(self, user_id: int):
         """get enrollments by user id"""

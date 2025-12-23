@@ -32,15 +32,19 @@ async def get_courses(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось получить курсы: {e}")
 
-@router.get("/{course_id}", response_model=CourseResponse)
-async def get_course(course_id: int, db: Session = Depends(get_db)):
+@router.get("/{course_id}")
+async def get_course(course_id: int, fields: str | None = Query(None), db: Session = Depends(get_db)):
     """get course by id"""
     course_service = CourseService(db)
     course = course_service.get_course_by_id(course_id)
     if not course:
         raise HTTPException(status_code=404, detail="Курс не найден")
     try:
-        return course
+        fields_list = fields.split(",") if fields else None
+        if fields_list is None:
+            return CourseResponse.model_validate(course)
+        course_result = {field: getattr(course, field) for field in fields_list}
+        return course_result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось получить курс: {e}")
 
