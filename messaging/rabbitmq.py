@@ -11,18 +11,24 @@ RABBITMQ_PASS = os.getenv("RABBITMQ_PASS")
 RABBITMQ_PORT = os.getenv("RABBITMQ_PORT")
 
 
-credentials = pika.PlainCredentials(
-    username=RABBITMQ_USER,
-    password=RABBITMQ_PASS
-)
+def get_connection():
+    credentials = pika.PlainCredentials(
+        os.getenv("RABBITMQ_USER"),
+        os.getenv("RABBITMQ_PASS"),
+    )
 
-parameters = pika.ConnectionParameters(
-    host=RABBITMQ_HOST,
-    port=RABBITMQ_PORT,
-    credentials=credentials,
-    heartbeat=600,
-    blocked_connection_timeout=300
-)
+    parameters = pika.ConnectionParameters(
+        host=os.getenv("RABBITMQ_HOST"),
+        port=int(os.getenv("RABBITMQ_PORT")),
+        credentials=credentials,
+        heartbeat=600,
+        blocked_connection_timeout=300,
+    )
 
-connection = pika.BlockingConnection(parameters)
-channel = connection.channel()
+    return pika.BlockingConnection(parameters)
+
+
+def get_channel():
+    connection = get_connection()
+    channel = connection.channel()
+    return connection, channel

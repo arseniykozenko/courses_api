@@ -1,10 +1,11 @@
 import json
+import os
 import logging
 import pika
 from datetime import datetime
 
-from messaging.rabbitmq import channel
-from messaging.queues import REQUEST_QUEUE, DLQ_QUEUE
+from messaging.rabbitmq import get_connection
+from messaging.queues import declare_queues, REQUEST_QUEUE, DLQ_QUEUE
 
 from utils.auth import check_api_key
 from utils.idempotency import get_cached_response, cache_response
@@ -21,6 +22,10 @@ from api.v2.schemas import (
     EnrollmentCreate, EnrollmentResponse as EnrollmentResponseV2
 )
 
+connection = get_connection()
+channel = connection.channel()
+declare_queues(channel)
+
 # -------------------- RESPONSE --------------------
 def serialize(obj):
     """Преобразуем объекты в JSON-сериализуемые"""
@@ -33,17 +38,38 @@ def serialize(obj):
     else:
         return obj
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOGS_DIR = os.path.join(BASE_DIR, "logs")
+os.makedirs(LOGS_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOGS_DIR, "worker.log")
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler("worker.log"),
+        logging.FileHandler(LOG_FILE),
         logging.StreamHandler()
     ]
 )
 
 MAX_RETRIES = 3
 RETRY_DELAY = 5
+def send_to_dlq(request, error: Exception):
+    dlq_message = {
+        "request_id": request.get("id"),
+        "action": request.get("action"),
+        "version": request.get("version"),
+        "error": str(error),
+        "original_request": request,
+        "timestamp": datetime.now().isoformat()
+    }
+
+    channel.basic_publish(
+        exchange="",
+        routing_key=DLQ_QUEUE,
+        body=json.dumps(dlq_message)
+    )
+    logging.error(f"Сообщение отправлено в DLQ: {dlq_message}")
 
 def send_response(properties, correlation_id, status, data=None, error=None):
     if not properties or not properties.reply_to:
@@ -66,6 +92,8 @@ def send_response(properties, correlation_id, status, data=None, error=None):
         body=json.dumps(response)
     )
 
+    logging.info(f"Ответ отправлен: {response}")
+
 def on_message(ch, method, properties, body):
     request = json.loads(body)
     request_id = request.get("id")
@@ -84,12 +112,14 @@ def on_message(ch, method, properties, body):
             error=cached.get("error")
         )
         ch.basic_ack(delivery_tag=method.delivery_tag)
+        logging.info(f"Закэшированный ответ отправлен: {cached}")
         return
 
     # ---------- auth ----------
     if not check_api_key(request.get("auth")):
         send_response(properties, request_id, status="error", error="Unauthorized")
         ch.basic_ack(delivery_tag=method.delivery_tag)
+        logging.warning(f"Unauthorized: {request}")
         return
 
     db = next(get_db())
@@ -204,6 +234,7 @@ def on_message(ch, method, properties, body):
             response_data = {"deleted_enrollment_id": data["enrollment_id"]}
 
         else:
+            logging.error(f"Unknown action: {action}")
             raise ValueError(f"Unknown action: {action}")
 
         safe_response = serialize(response_data)
@@ -211,11 +242,12 @@ def on_message(ch, method, properties, body):
 
         send_response(properties, request_id, status="ok", data=safe_response)
         ch.basic_ack(delivery_tag=method.delivery_tag)
+        logging.info(f"Запрос {request_id} обработан: действие={action}, версия={version}")
 
     except Exception as e:
         logging.error(f"Ошибка при обработке запроса {request_id}: {e}")
         # DLQ
-        channel.basic_publish(exchange="", routing_key=DLQ_QUEUE, body=body)
+        send_to_dlq(request, e)
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     finally:
