@@ -6,7 +6,8 @@ import {
     Button,
     Empty,
     Image,
-    Divider
+    Divider,
+    Spin
 } from 'antd';
 import {
     PlusOutlined,
@@ -21,15 +22,14 @@ const { Title, Text } = Typography;
 const CartPage = () => {
     const navigate = useNavigate();
     const {
-        cart,
-        addToCart,
-        decreaseQuantity,
-        removeFromCart,
-        clearCart,
-        totalPrice
+        items,
+        totalCost,
+        incrementItem,
+        decrementItem,
+        removeItem
     } = useCart();
 
-    if (cart.length === 0) {
+    if (!items || items.length === 0) {
         return (
             <div style={{ maxWidth: 800, margin: '80px auto' }}>
                 <Empty description="Корзина пуста">
@@ -47,13 +47,13 @@ const CartPage = () => {
 
             <Row gutter={[16, 16]}>
                 <Col xs={24} md={16}>
-                    {cart.map(item => (
-                        <Card key={item.ID} style={{ marginBottom: 16 }}>
+                    {items.map(item => (
+                        <Card key={item.EntityID} style={{ marginBottom: 16 }}>
                             <Row gutter={16} align="middle">
                                 <Col span={6}>
-                                    {item.ImageURL && (
+                                    {item.ImageUrl && (
                                         <Image
-                                            src={item.ImageURL}
+                                            src={item.ImageUrl}
                                             alt={item.Title}
                                             preview={false}
                                             style={{ borderRadius: 8 }}
@@ -63,9 +63,7 @@ const CartPage = () => {
 
                                 <Col span={10}>
                                     <Title level={5}>{item.Title}</Title>
-                                    <Text type="secondary">
-                                        {item.Price} ₽
-                                    </Text>
+                                    <Text type="secondary">{item.CostPerItem} ₽</Text>
                                 </Col>
 
                                 <Col span={5}>
@@ -78,14 +76,12 @@ const CartPage = () => {
                                     >
                                         <Button
                                             icon={<MinusOutlined />}
-                                            onClick={() =>
-                                                decreaseQuantity(item.ID)
-                                            }
+                                            onClick={() => {decrementItem(item, 1)}}
                                         />
-                                        <Text>{item.quantity}</Text>
+                                        <Text>{item.Quantity}</Text>
                                         <Button
                                             icon={<PlusOutlined />}
-                                            onClick={() => addToCart(item)}
+                                            onClick={() => {incrementItem(item, 1)}}
                                         />
                                     </div>
                                 </Col>
@@ -94,9 +90,7 @@ const CartPage = () => {
                                     <Button
                                         danger
                                         icon={<DeleteOutlined />}
-                                        onClick={() =>
-                                            removeFromCart(item.ID)
-                                        }
+                                        onClick={() => removeItem(item, item.Quantity)}
                                     />
                                 </Col>
                             </Row>
@@ -111,7 +105,7 @@ const CartPage = () => {
                         <Divider />
 
                         <Text strong style={{ fontSize: 18 }}>
-                            {totalPrice} ₽
+                            {totalCost} ₽
                         </Text>
 
                         <Divider />
@@ -123,10 +117,6 @@ const CartPage = () => {
                             style={{ marginBottom: 12 }}
                         >
                             Оформить заказ
-                        </Button>
-
-                        <Button danger block onClick={clearCart}>
-                            Очистить корзину
                         </Button>
                     </Card>
                 </Col>

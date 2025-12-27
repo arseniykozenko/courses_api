@@ -1,76 +1,62 @@
 import { useState, useEffect } from 'react';
 import { CartContext } from './CartContext';
+import APIService from '../API/APIService';
+
 export const CartProvider = ({ children }) => {
-    const [cart, setCart] = useState(() => {
-        const saved = localStorage.getItem('cart');
-        return saved ? JSON.parse(saved) : [];
-    });
+    const [items, setItems] = useState([]);
+    const [totalCost, setTotalCost] = useState(0);
+    const [loading, setLoading] = useState(false);
+
+    const fetchCart = async () => {
+        setLoading(true);
+        try {
+            const response = await APIService.getCart();
+            setItems(response.data?.Cart?.Items ?? []);
+            setTotalCost(response.data?.TotalCost ?? 0);
+        } catch (e) {
+            console.error('Ошибка при загрузке корзины', e);
+            setItems([]);
+            setTotalCost(0);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const addToCart = async (productId, quantity = 1) => {
+        await APIService.addToCart(productId, quantity);
+        await fetchCart();
+    };
+
+    const incrementItem = async (productId, quantity = 1) => {
+        await APIService.incrementCartItem(productId, quantity);
+        await fetchCart();
+    };
+
+    const decrementItem = async (productId, quantity = 1) => {
+        console.log('PATCH /decrease payload', { product_id: productId, quantity });
+        try {
+            await APIService.decrementCartItem(productId, quantity);
+        } catch (e) {
+            console.error('DECREMENT ERROR', e.response?.data || e.message);
+        }
+        await fetchCart();
+    };
+
+    const removeItem = async (productId, quantity) => {
+        try {
+            await APIService.removeCartItem(productId, quantity);
+        } catch (e) {
+            console.error('REMOVE ERROR', e.response?.data || e.message);
+        }
+        await fetchCart();
+    };
 
     useEffect(() => {
-        localStorage.setItem('cart', JSON.stringify(cart));
-    }, [cart]);
-
-    const addToCart = (product) => {
-        setCart(prev => {
-            const existing = prev.find(item => item.ID === product.ID);
-
-            if (existing) {
-                return prev.map(item =>
-                    item.ID === product.ID
-                        ? { ...item, quantity: item.quantity + 1 }
-                        : item
-                );
-            }
-
-            return [
-                ...prev,
-                {
-                    ID: product.ID,
-                    Title: product.Title,
-                    Price: product.Price,
-                    quantity: 1,
-                    ImageURL: product.Images?.[0]?.ImageURL
-                }
-            ];
-        });
-    };
-
-    const decreaseQuantity = (productId) => {
-        setCart(prev =>
-            prev
-                .map(item =>
-                    item.ID === productId
-                        ? { ...item, quantity: item.quantity - 1 }
-                        : item
-                )
-                .filter(item => item.quantity > 0)
-        );
-    };
-
-    const removeFromCart = (productId) => {
-        setCart(prev => prev.filter(item => item.ID !== productId));
-    };
-
-    const clearCart = () => setCart([]);
-
-    const totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-    const totalPrice = cart.reduce(
-        (sum, item) => sum + Number(item.Price) * item.quantity,
-        0
-    );
+        fetchCart(); 
+    }, []);
 
     return (
-        <CartContext.Provider
-            value={{
-                cart,
-                addToCart,
-                decreaseQuantity,
-                removeFromCart,
-                clearCart,
-                totalCount,
-                totalPrice
-            }}
-        >
+        <CartContext.Provider value={{ items, totalCost, loading, addToCart, incrementItem, decrementItem, removeItem }}>
             {children}
         </CartContext.Provider>
     );

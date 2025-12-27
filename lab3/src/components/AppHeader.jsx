@@ -8,6 +8,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../hooks/useCart';
+import { useAuth } from '../hooks/UseAuth';
 
 const { Header } = Layout;
 const { Text } = Typography;
@@ -15,8 +16,7 @@ const { Text } = Typography;
 const AppHeader = () => {
     const navigate = useNavigate();
     const { totalCount } = useCart();
-
-    const isAuth = false;
+    const { isAuth, signOut } = useAuth();
 
     const userMenuItems = [
         {
@@ -30,7 +30,7 @@ const AppHeader = () => {
             icon: <LogoutOutlined />,
             label: 'Выйти',
             danger: true,
-            onClick: () => console.log('logout')
+            onClick: signOut
         }
     ];
 
@@ -87,7 +87,7 @@ const AppHeader = () => {
                     <Button
                         type="primary"
                         icon={<LoginOutlined />}
-                        onClick={() => navigate('/login')}
+                        onClick={() => navigate('/auth')}
                     >
                         Войти
                     </Button>

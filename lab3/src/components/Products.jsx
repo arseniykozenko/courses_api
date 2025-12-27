@@ -12,19 +12,27 @@ const Products = () => {
     const [categories, setCategories] = useState([]);
     const [limit, setLimit] = useState(10);
     const [offset, setOffset] = useState(0);
-    const [fetchCategories, isLoadingCategories, errorCategories] = useFetching(async () => {
+    const [allProductsLength, setAllProductsLength] = useState(0);
+    const [fetchCategories] = useFetching(async () => {
         const response = await APIService.getAllCategories()
         console.log(response.data.Categories)
         setCategories(response.data.Categories)
     })
     const [fetchProducts, isLoading, error] = useFetching(async (categoryId = 20, limitParam = limit, offsetParam = offset) => {
         const response = await APIService.getProducts(categoryId, limitParam, offsetParam)
+        console.log(response.data.Products)
         setProducts(response.data.Products)
     })
+        const [fetchTotalProducts] = useFetching(async (categoryId = 20) => {
+        const response = await APIService.getProducts(categoryId, 10000, 0);
+        setAllProductsLength(response.data.Products.length);
+    });
+
 
     useEffect(() => {
         fetchCategories()
         fetchProducts(activeCategory ?? 20, limit, offset)
+        fetchTotalProducts(activeCategory ?? 20);
     }, [])
 
     const onTabChange = (key) => {
@@ -32,6 +40,7 @@ const Products = () => {
         setActiveCategory(categoryId);
         setOffset(0);
         fetchProducts(categoryId, limit, 0);
+        fetchTotalProducts(categoryId);
     };
 
     const onPageChange = (page, pageSize) => {
@@ -104,7 +113,7 @@ const Products = () => {
                         <Pagination
                             current={Math.floor(offset / limit) + 1}
                             pageSize={limit}
-                            total={products.length}
+                            total={allProductsLength}
                             onChange={onPageChange}
                             showSizeChanger
                             pageSizeOptions={[1, 2, 3, 4, 5, 10]}

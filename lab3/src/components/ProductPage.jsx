@@ -108,14 +108,19 @@ const ProductPage = () => {
                             type="primary"
                             block
                             style={{ marginTop: 16 }}
-                            onClick={() => { 
-                                addToCart(product), 
-                                 message.open({
-                                    type: 'success',
-                                    content: `${product.Title} добавлен в корзину`,
-                                    duration: 2,
-                                    onClick: () => navigate('/cart')
-                                });
+                            onClick={ async () => { 
+                                try {
+                                    await addToCart(product, 1), 
+                                    message.open({
+                                        type: 'success',
+                                        content: `${product.Title} добавлен в корзину`,
+                                        duration: 2,
+                                        onClick: () => navigate('/cart')
+                                    })
+                                } catch(e) {
+                                    console.error('Ошибка при добавлении в корзину', e);
+                                    message.error('Ошибка при добавлении в корзину');
+                                }    
                             }}
                             
                         >
