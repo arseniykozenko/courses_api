@@ -24,7 +24,8 @@ export const useCart = () => {
     };
 
     const removeItem = async (product, quantity = 1) => {
-        await context.removeItem(product.EntityID, quantity);
+        const response = await context.removeItem(product.EntityID, quantity);
+        console.log('REMOVE ITEM RESPONSE', response);
     };
 
     return {

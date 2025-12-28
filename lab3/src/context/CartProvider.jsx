@@ -6,6 +6,10 @@ export const CartProvider = ({ children }) => {
     const [items, setItems] = useState([]);
     const [totalCost, setTotalCost] = useState(0);
     const [loading, setLoading] = useState(false);
+    const totalCount = items.reduce(
+        (sum, item) => sum + (item.Quantity || 0),
+        0
+    );
 
     const fetchCart = async () => {
         setLoading(true);
@@ -56,7 +60,7 @@ export const CartProvider = ({ children }) => {
     }, []);
 
     return (
-        <CartContext.Provider value={{ items, totalCost, loading, addToCart, incrementItem, decrementItem, removeItem }}>
+        <CartContext.Provider value={{ items, totalCost, totalCount, loading, addToCart, incrementItem, decrementItem, removeItem }}>
             {children}
         </CartContext.Provider>
     );
