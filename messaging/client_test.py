@@ -128,19 +128,19 @@ def test_courses():
 def test_idempotency():
     print("\n=== IDEMPOTENCY ===")
 
-    resp = send_request("user_delete", {"user_id": 15})
-    print("User deleted:", resp)
-    # user_data = {
-    #     "email": "student1@example.com",
-    #     "first_name": "Alexey",
-    #     "last_name": "Petrov",
-    #     "patronymic": "Ivanovich",
-    #     "password": "123456",
-    # }
-    # resp = send_request("user_create", user_data, request_id="user_create")
-    # print("User created:", resp)
-    # send_request("user_create", user_data, request_id="user_create")
-    # print("User created:", resp)
+    # resp = send_request("user_delete", {"user_id": 15})
+    # print("User deleted:", resp)
+    user_data = {
+        "email": "student1@example.com",
+        "first_name": "Alexey",
+        "last_name": "Petrov",
+        "patronymic": "Ivanovich",
+        "password": "123456",
+    }
+    resp = send_request("user_create", user_data, request_id="user_create")
+    print("User created:", resp)
+    send_request("user_create", user_data, request_id="user_create")
+    print("User created:", resp)
 
 def test_enrollments():
     print("\n=== ENROLLMENTS ===")
