@@ -2,7 +2,7 @@ import { Button, Card, Col, Row, Typography, Spin, Empty, Tabs, Pagination } fro
 import { useState, useEffect } from 'react';
 import APIService from '../API/APIService';
 import { useFetching } from '../hooks/useFetching';
-import ProductItem from './ProductItem';
+import ProductItem from '../components/ProductItem';
 
 const { Text, Title } = Typography;
 

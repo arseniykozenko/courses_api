@@ -7,7 +7,7 @@ import {
     LogoutOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useCart } from '../hooks/useCart';
+import { useCart } from '../hooks/UseCart';
 import { useAuth } from '../hooks/UseAuth';
 
 const { Header } = Layout;
@@ -68,10 +68,12 @@ const AppHeader = () => {
                 </Badge>
 
                 {/* Заказы */}
-                <OrderedListOutlined
-                    style={{ fontSize: 22, cursor: 'pointer' }}
-                    onClick={() => navigate('/orders')}
-                />
+                {isAuth && (
+                    <OrderedListOutlined
+                        style={{ fontSize: 22, cursor: 'pointer' }}
+                        onClick={() => navigate('/orders')}
+                    />
+                )}
 
                 {/* Авторизация */}
                 {isAuth ? (

@@ -83,5 +83,10 @@ export default class APIService {
     static async signOut() {
         return apiClient.post('/client/v1/auth/sign-out');
     }
+
+    static async getOrders() {
+        const response = apiClient.get('/client/v1/orders/');
+        return response;
+    }
 }
 
